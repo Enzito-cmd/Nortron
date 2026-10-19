@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1001 &281730384
+--- !u!1001 &393407497
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -129,15 +129,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 9046dd25265fd4a499441736fc86faca, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 11.01807
+      value: 17.82401
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9046dd25265fd4a499441736fc86faca, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.000001020816
+      value: 0.000000040060513
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9046dd25265fd4a499441736fc86faca, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 103.25523
+      value: 108.94001
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9046dd25265fd4a499441736fc86faca, type: 3}
       propertyPath: m_LocalRotation.w
@@ -167,10 +167,26 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -450435477336378351, guid: 9046dd25265fd4a499441736fc86faca, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 662f145562dde644ba845aa11cefc681, type: 2}
     - target: {fileID: 919132149155446097, guid: 9046dd25265fd4a499441736fc86faca, type: 3}
       propertyPath: m_Name
       value: lightcycle arena1
       objectReference: {fileID: 0}
+    - target: {fileID: 2951345558204695707, guid: 9046dd25265fd4a499441736fc86faca, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 662f145562dde644ba845aa11cefc681, type: 2}
+    - target: {fileID: 3006800062915795105, guid: 9046dd25265fd4a499441736fc86faca, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 662f145562dde644ba845aa11cefc681, type: 2}
+    - target: {fileID: 4644469985719980030, guid: 9046dd25265fd4a499441736fc86faca, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 662f145562dde644ba845aa11cefc681, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -371,4 +387,4 @@ SceneRoots:
   m_Roots:
   - {fileID: 1163795592}
   - {fileID: 902996961}
-  - {fileID: 281730384}
+  - {fileID: 393407497}
