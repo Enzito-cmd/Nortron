@@ -3291,7 +3291,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::StartPad
   padArea: {fileID: 7918273389225402935}
   padRenderer: {fileID: 8727816336616338229}
-  minPlayers: 2
+  minPlayers: 1
   waitingColor: {r: 0.6, g: 0.05, b: 0.05, a: 1}
   readyColor: {r: 0.19832057, g: 2.1159737, b: 0, a: 1}
 --- !u!33 &8118244822529135790

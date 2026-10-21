@@ -9,6 +9,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
 {
     public const int LobbySceneIndex = 1;
     public const int RaceSceneIndex = 2;
+    public const int NewRaceSceneIndex = 3;
 
     private const int MaxPlayers = 4;
     private const string MenuSceneName = "MainMenu";
@@ -101,7 +102,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
         {
             prefabToSpawn = playerPrefab;
         }
-        else if (loadedSceneIndex == RaceSceneIndex)
+        else if (loadedSceneIndex == NewRaceSceneIndex)
         {
             prefabToSpawn = racePlayerPrefab;
         }

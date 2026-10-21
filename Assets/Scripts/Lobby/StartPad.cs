@@ -10,7 +10,7 @@ public class StartPad : NetworkBehaviour
 
     [SerializeField] private BoxCollider padArea;
     [SerializeField] private Renderer padRenderer;
-    [SerializeField] private int minPlayers = 2;
+    [SerializeField] private int minPlayers;
     [SerializeField, ColorUsage(false, true)] private Color waitingColor = new Color(0.6f, 0.05f, 0.05f);
     [SerializeField, ColorUsage(false, true)] private Color readyColor = new Color(0f, 3f, 3f);
 
@@ -47,7 +47,7 @@ public class StartPad : NetworkBehaviour
         if (hostPlayer != null && IsOnPad(hostPlayer.transform.position))
         {
             raceRequested = true;
-            Runner.LoadScene(SceneRef.FromIndex(NetworkManager.RaceSceneIndex), LoadSceneMode.Single);
+            Runner.LoadScene(SceneRef.FromIndex(NetworkManager.NewRaceSceneIndex), LoadSceneMode.Single);
         }
     }
 
