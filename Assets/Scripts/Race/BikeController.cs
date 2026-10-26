@@ -13,9 +13,14 @@ public class BikeController : NetworkBehaviour
     [SerializeField] private float minSpeedToTurn = 1f;
     [SerializeField] private float groundStickForce = 2f;
 
+    [Header("Audio")]
+    [SerializeField] private AudioSource engineAudioSource;
+    [SerializeField] private AudioClip engineAccelerateClip;
+
     private CharacterController controller;
 
     [Networked] private float ForwardSpeed { get; set; }
+    [Networked] private NetworkBool IsAccelerating { get; set; }
     [Networked] public int CurrentLap { get; private set; }
     [Networked] private int NextCheckpointIndex { get; set; }
 
@@ -79,12 +84,43 @@ public class BikeController : NetworkBehaviour
         }
     }
 
+    public override void Render()
+    {
+        // Control de audio del motor basado en red (funciona tanto para el jugador local como para contrincantes)
+        if (engineAudioSource != null && engineAccelerateClip != null)
+        {
+            bool canDrive = RaceManager.Instance != null && RaceManager.Instance.State == RaceState.Racing;
+            bool shouldPlay = IsAccelerating && canDrive;
+
+            if (shouldPlay)
+            {
+                if (!engineAudioSource.isPlaying)
+                {
+                    engineAudioSource.clip = engineAccelerateClip;
+                    engineAudioSource.loop = true;
+                    engineAudioSource.Play();
+                }
+            }
+            else
+            {
+                if (engineAudioSource.isPlaying)
+                {
+                    engineAudioSource.Stop();
+                }
+            }
+        }
+    }
+
     private void UpdateSpeed(float throttle)
     {
         float speed = ForwardSpeed;
         float dt = Runner.DeltaTime;
 
-        if (throttle > 0.01f)
+        // Detectar si está acelerando (hacia adelante con throttle > 0.01)
+        bool accelerating = throttle > 0.01f;
+        IsAccelerating = accelerating;
+
+        if (accelerating)
         {
             speed = Mathf.MoveTowards(speed, maxForwardSpeed, acceleration * dt);
         }

@@ -28,6 +28,7 @@ public class RaceManager : NetworkBehaviour
     [Networked] public PlayerRef WinnerPlayer { get; private set; }
 
     private readonly List<BikeController> bikes = new List<BikeController>();
+    private ChangeDetector _changeDetector;
 
     public static RaceManager Instance { get; private set; }
 
@@ -58,6 +59,7 @@ public class RaceManager : NetworkBehaviour
     public override void Spawned()
     {
         Instance = this;
+        _changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState)
@@ -113,6 +115,21 @@ public class RaceManager : NetworkBehaviour
                     Runner.LoadScene(SceneRef.FromIndex(NetworkManager.LobbySceneIndex), LoadSceneMode.Single);
                 }
                 break;
+        }
+    }
+
+    public override void Render()
+    {
+        // Detectamos cambios en el estado de red de forma fluida para todos los clientes
+        foreach (var change in _changeDetector.DetectChanges(this))
+        {
+            if (change == nameof(State))
+            {
+                if (State == RaceState.Countdown)
+                {
+                    SoundManager.Instance?.PlayCountdownSound();
+                }
+            }
         }
     }
 
