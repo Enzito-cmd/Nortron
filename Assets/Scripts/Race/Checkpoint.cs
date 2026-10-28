@@ -4,6 +4,8 @@ public class Checkpoint : MonoBehaviour
 {
     [SerializeField] private BoxCollider area;
 
+    public Vector3 Center => area.transform.TransformPoint(area.center);
+
     public bool Contains(Vector3 worldPosition)
     {
         Vector3 localPosition = area.transform.InverseTransformPoint(worldPosition) - area.center;

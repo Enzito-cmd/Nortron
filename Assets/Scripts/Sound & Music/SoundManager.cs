@@ -15,6 +15,7 @@ public class SoundManager : MonoBehaviour
 
     [Header("SFX Clips")]
     [SerializeField] private AudioClip countdownSound;
+    [SerializeField] private AudioClip victorySound;
 
     private void Awake()
     {
@@ -40,8 +41,10 @@ public class SoundManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Comparamos con los índices definidos en tu NetworkManager
-        if (scene.buildIndex == NetworkManager.LobbySceneIndex)
+        if (Instance != this) return;
+
+        // Comparamos con los indices definidos en tu NetworkManager
+        if (scene.buildIndex == NetworkManager.MenuSceneIndex || scene.buildIndex == NetworkManager.LobbySceneIndex)
         {
             PlayMusic(lobbyMusic);
         }
@@ -67,6 +70,14 @@ public class SoundManager : MonoBehaviour
         if (sfxAudioSource != null && countdownSound != null)
         {
             sfxAudioSource.PlayOneShot(countdownSound);
+        }
+    }
+
+    public void PlayVictorySound()
+    {
+        if (sfxAudioSource != null && victorySound != null)
+        {
+            sfxAudioSource.PlayOneShot(victorySound);
         }
     }
 }

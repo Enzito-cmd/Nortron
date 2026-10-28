@@ -3,6 +3,7 @@ using Fusion;
 public enum Buttons
 {
     Jump,
+    Boost,
 }
 
 public struct NetworkInputData : INetworkInput

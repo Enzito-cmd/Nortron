@@ -4,11 +4,11 @@ using UnityEngine;
 
 public class PatrullaHelicoptero : MonoBehaviour
 {
-    [Header("Configuración de Puntos")]
+    [Header("Configuracion de Puntos")]
     [Tooltip("Lista de Transforms que representan los puntos de patrulla")]
     public Transform[] puntosPatrulla;
 
-    [Header("Parámetros de Movimiento")]
+    [Header("Parametros de Movimiento")]
     public float velocidadMovimiento = 15f;
     public float velocidadRotacion = 3f;
     public float distanciaLlegada = 2f;

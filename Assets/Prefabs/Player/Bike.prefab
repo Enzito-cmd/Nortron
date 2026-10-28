@@ -10,10 +10,11 @@ GameObject:
   m_Component:
   - component: {fileID: 4075560743695329388}
   - component: {fileID: 9083576991464120347}
-  - component: {fileID: 6344428161847333737}
-  - component: {fileID: 947925262964047110}
   - component: {fileID: 2010229239512228505}
   - component: {fileID: -7539963109861196561}
+  - component: {fileID: 8870613531716533291}
+  - component: {fileID: 5212712124735252659}
+  - component: {fileID: 2609627436002678759}
   m_Layer: 0
   m_Name: Bike
   m_TagString: Untagged
@@ -55,53 +56,10 @@ MonoBehaviour:
   Flags: 262402
   NestedObjects: []
   NetworkedBehaviours:
-  - {fileID: 947925262964047110}
+  - {fileID: 8870613531716533291}
   - {fileID: 2010229239512228505}
+  - {fileID: 2609627436002678759}
   ForceRemoteRenderTimeframe: 0
---- !u!143 &6344428161847333737
-CharacterController:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 453049405556843523}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Height: 0.7
-  m_Radius: 0.3
-  m_SlopeLimit: 45
-  m_StepOffset: 0.1
-  m_SkinWidth: 0.08
-  m_MinMoveDistance: 0
-  m_Center: {x: 0, y: 0.25, z: 0}
---- !u!114 &947925262964047110
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 453049405556843523}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 378411a89480da345945c2f888327a2d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Fusion.Unity::Fusion.NetworkCharacterController
-  _stateAuthorityChangeErrorCorrectionDelta: 0
-  gravity: -20
-  jumpImpulse: 8
-  acceleration: 10
-  braking: 10
-  maxSpeed: 2
-  rotationSpeed: 15
 --- !u!114 &2010229239512228505
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -122,10 +80,26 @@ MonoBehaviour:
   maxReverseSpeed: 5
   turnSpeed: 90
   minSpeedToTurn: 1
-  groundStickForce: 2
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  gravity: -25
+  maxFallSpeed: 40
+  maxGroundAngle: 50
+  groundSnapDistance: 0.3
+  skinWidth: 0.03
+  airTurnFactor: 0.35
+  respawnFallDistance: 15
+  boostDuration: 2.5
+  boostSpeedBonus: 10
+  boostAccelerationMultiplier: 3
+  visual: {fileID: 1885071428222060943}
+  visualTiltSpeed: 12
   engineAudioSource: {fileID: -7539963109861196561}
   engineAccelerateClip: {fileID: 8300000, guid: f1df73e425b3e3646812043e2c4f4200, type: 3}
   _CurrentLap: 0
+  _HasBoost:
+    RawValue: 0
 --- !u!82 &-7539963109861196561
 AudioSource:
   m_ObjectHideFlags: 0
@@ -223,6 +197,87 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &8870613531716533291
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 453049405556843523}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.NetworkTransform
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  ConfigFlags: 0
+  PhysicsSettings:
+    ForecastEnabled: 1
+    DebugPhysics: 0
+    GravityForecast: 2
+    MaxExtrapolationTime: 0.15
+    MinLinearDetectedError: 0.02
+    MinAngularDetectedError: 3
+    MaxLinearError: 0
+    MaxAngularError: 0
+    LowCorrectionProgressThreshold: 0.015
+    HighErrorSimilarityThreshold: 1
+    MaxErrorTotalTime: 0.5
+    MaxRemoteSleepIgnoreTime: 0.5
+    ErrorCorrectionType: 0
+    LinearVelCorrectionMul: 1
+    AngularVelCorrectionMul: 1
+    PositionCorrectionLerp: 0.15
+    RotationCorrectionLerp: 0.15
+    Spring: 75
+    Damper: 2
+    MinImpactfulCollisionAlignment: 0.3
+    ImpactStartCorrectionTime: 0.1
+    ImpactCorrectionTimeComplete: 0.3
+--- !u!136 &5212712124735252659
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 453049405556843523}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.23
+  m_Height: 0.95
+  m_Direction: 2
+  m_Center: {x: 0, y: 0.1, z: 0}
+--- !u!114 &2609627436002678759
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 453049405556843523}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e66d9eb7325e90c4a8eec574094558cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerIdentity
+  tagHeight: 2.2
+  hideForOwner: 0
+  _Nickname:
+    _length: 0
+    _data:
+      Data: 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 --- !u!1 &722202541934228521
 GameObject:
   m_ObjectHideFlags: 0

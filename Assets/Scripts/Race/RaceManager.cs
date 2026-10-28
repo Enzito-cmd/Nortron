@@ -14,21 +14,24 @@ public enum RaceState
 
 public class RaceManager : NetworkBehaviour
 {
+    private const int MaxPickups = 16;
+
     [SerializeField] private int minPlayersToStart = 2;
     [SerializeField] private float countdownSeconds = 5f;
     [SerializeField] private int lapsToWin = 3;
     [SerializeField] private float finishDelaySeconds = 5f;
-    [SerializeField] private float bikeCollisionDistance = 1.6f;
-    [SerializeField] private float collisionSpeedLoss = 0.6f;
+    [SerializeField] private float collisionBounce = 0.3f;
     [SerializeField] private Checkpoint[] checkpoints;
 
     [Networked] public RaceState State { get; private set; }
     [Networked] private TickTimer CountdownTimer { get; set; }
     [Networked] private TickTimer FinishTimer { get; set; }
     [Networked] public PlayerRef WinnerPlayer { get; private set; }
+    [Networked, Capacity(MaxPickups)] private NetworkArray<TickTimer> PickupTimers => default;
 
     private readonly List<BikeController> bikes = new List<BikeController>();
     private ChangeDetector _changeDetector;
+    private BoostPickup[] pickups = new BoostPickup[0];
 
     public static RaceManager Instance { get; private set; }
 
@@ -60,6 +63,13 @@ public class RaceManager : NetworkBehaviour
     {
         Instance = this;
         _changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);
+
+        pickups = FindObjectsByType<BoostPickup>(FindObjectsSortMode.None)
+            .OrderBy(pickup => pickup.transform.position.x)
+            .ThenBy(pickup => pickup.transform.position.z)
+            .ThenBy(pickup => pickup.transform.position.y)
+            .Take(MaxPickups)
+            .ToArray();
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState)
@@ -81,6 +91,20 @@ public class RaceManager : NetworkBehaviour
     public void UnregisterBike(BikeController bike)
     {
         bikes.Remove(bike);
+    }
+
+    public bool TryTakeBoost(Vector3 position)
+    {
+        for (int i = 0; i < pickups.Length; i++)
+        {
+            if (pickups[i].IsNear(position) && PickupTimers[i].ExpiredOrNotRunning(Runner))
+            {
+                PickupTimers.Set(i, TickTimer.CreateFromSeconds(Runner, pickups[i].RespawnSeconds));
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public override void FixedUpdateNetwork()
@@ -129,7 +153,16 @@ public class RaceManager : NetworkBehaviour
                 {
                     SoundManager.Instance?.PlayCountdownSound();
                 }
+                else if (State == RaceState.Finished && IsLocalPlayerWinner())
+                {
+                    SoundManager.Instance?.PlayVictorySound();
+                }
             }
+        }
+
+        for (int i = 0; i < pickups.Length; i++)
+        {
+            pickups[i].SetAvailable(PickupTimers[i].ExpiredOrNotRunning(Runner));
         }
     }
 
@@ -164,21 +197,47 @@ public class RaceManager : NetworkBehaviour
                 BikeController a = bikes[i];
                 BikeController b = bikes[j];
 
-                Vector3 offset = b.transform.position - a.transform.position;
-                offset.y = 0f;
-
-                float distance = offset.magnitude;
-
-                if (distance >= bikeCollisionDistance || distance <= 0.0001f)
+                if (a.Hull == null || b.Hull == null)
                 {
                     continue;
                 }
 
-                Vector3 pushDirection = offset / distance;
-                Vector3 push = pushDirection * ((bikeCollisionDistance - distance) * 0.5f);
+                Transform hullA = a.Hull.transform;
+                Transform hullB = b.Hull.transform;
 
-                a.ApplyCollisionPush(-push, collisionSpeedLoss);
-                b.ApplyCollisionPush(push, collisionSpeedLoss);
+                if (Physics.ComputePenetration(a.Hull, hullA.position, hullA.rotation, b.Hull, hullB.position, hullB.rotation, out Vector3 direction, out float distance) == false)
+                {
+                    continue;
+                }
+
+                Vector3 push = direction * (distance * 0.5f);
+
+                a.ApplyPush(push);
+                b.ApplyPush(-push);
+
+                Vector3 normal = -direction;
+                normal.y = 0f;
+
+                if (normal.sqrMagnitude < 0.0001f)
+                {
+                    continue;
+                }
+
+                normal.Normalize();
+
+                Vector3 velocityA = a.HorizontalVelocity;
+                Vector3 velocityB = b.HorizontalVelocity;
+                float approach = Vector3.Dot(velocityB - velocityA, normal);
+
+                if (approach >= 0f)
+                {
+                    continue;
+                }
+
+                float impulse = -(1f + collisionBounce) * approach * 0.5f;
+
+                a.SetHorizontalVelocity(velocityA - normal * impulse);
+                b.SetHorizontalVelocity(velocityB + normal * impulse);
             }
         }
     }

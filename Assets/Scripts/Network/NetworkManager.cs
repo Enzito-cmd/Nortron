@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Fusion;
 using Fusion.Sockets;
 using UnityEngine;
@@ -7,9 +8,11 @@ using UnityEngine.SceneManagement;
 
 public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
 {
+    public const int MenuSceneIndex = 0;
     public const int LobbySceneIndex = 1;
     public const int RaceSceneIndex = 2;
     public const int NewRaceSceneIndex = 3;
+    public const int MaxNameLength = 16;
 
     private const int MaxPlayers = 4;
     private const string MenuSceneName = "MainMenu";
@@ -23,6 +26,8 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
     private int loadedSceneIndex = -1;
 
     public static NetworkManager Instance { get; private set; }
+
+    public string PlayerName { get; set; } = string.Empty;
 
     private void Awake()
     {
@@ -78,6 +83,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
         {
             GameMode = GameMode.Client,
             SessionName = sessionName,
+            ConnectionToken = Encoding.UTF8.GetBytes(PlayerName.Trim()),
             SceneManager = sceneManager
         });
 
@@ -123,9 +129,53 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
             Debug.LogWarning("No spawnpoints");
         }
 
-        NetworkObject avatar = runner.Spawn(prefabToSpawn, spawnPosition, spawnRotation, player);
+        string nickname = BuildNickname(runner, player);
+
+        NetworkObject avatar = runner.Spawn(prefabToSpawn, spawnPosition, spawnRotation, player, (spawnRunner, spawned) =>
+        {
+            PlayerIdentity identity = spawned.GetComponent<PlayerIdentity>();
+
+            if (identity != null)
+            {
+                identity.Nickname = nickname;
+            }
+        });
+
         runner.SetPlayerObject(player, avatar);
         spawnedAvatars.Add(player, avatar);
+    }
+
+    private string BuildNickname(NetworkRunner runner, PlayerRef player)
+    {
+        string nickname = string.Empty;
+
+        if (player == runner.LocalPlayer)
+        {
+            nickname = PlayerName;
+        }
+        else
+        {
+            byte[] token = runner.GetPlayerConnectionToken(player);
+
+            if (token != null)
+            {
+                nickname = Encoding.UTF8.GetString(token);
+            }
+        }
+
+        nickname = nickname.Trim();
+
+        if (nickname.Length > MaxNameLength)
+        {
+            nickname = nickname.Substring(0, MaxNameLength);
+        }
+
+        if (nickname.Length == 0)
+        {
+            nickname = "Jugador " + player.PlayerId;
+        }
+
+        return nickname;
     }
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
@@ -209,6 +259,12 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {
+        if (ChatBox.IsTyping)
+        {
+            input.Set(new NetworkInputData());
+            return;
+        }
+
         float forward = 0f;
         float turn = 0f;
 
@@ -236,6 +292,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
         data.Forward = forward;
         data.Turn = turn;
         data.buttons.Set((int)Buttons.Jump, Input.GetKey(KeyCode.Space));
+        data.buttons.Set((int)Buttons.Boost, Input.GetKey(KeyCode.Space));
 
         input.Set(data);
     }

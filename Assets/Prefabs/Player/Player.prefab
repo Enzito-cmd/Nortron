@@ -1249,6 +1249,7 @@ GameObject:
   - component: {fileID: 1135196798802302443}
   - component: {fileID: 3746877385114161473}
   - component: {fileID: 4850847811522069294}
+  - component: {fileID: 8239761470809571968}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1292,6 +1293,7 @@ MonoBehaviour:
   NetworkedBehaviours:
   - {fileID: 3746877385114161473}
   - {fileID: 4850847811522069294}
+  - {fileID: 8239761470809571968}
   ForceRemoteRenderTimeframe: 0
 --- !u!143 &1135196798802302443
 CharacterController:
@@ -1350,6 +1352,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LobbyPlayer
   animator: {fileID: 1828159537145738205}
+  turnSpeed: 120
+--- !u!114 &8239761470809571968
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5280388424804879572}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e66d9eb7325e90c4a8eec574094558cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerIdentity
+  tagHeight: 2.2
+  hideForOwner: 0
+  _Nickname:
+    _length: 0
+    _data:
+      Data: 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 --- !u!1 &5280675973886871245
 GameObject:
   m_ObjectHideFlags: 0

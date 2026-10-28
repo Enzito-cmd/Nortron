@@ -35,7 +35,7 @@ public class RaceHUD : MonoBehaviour
 
                 int lap = BikeController.Local.CurrentLap;
                 int position = raceManager.GetPosition(BikeController.Local);
-                return position + "°/" + raceManager.BikeCount + " - Vuelta " + Mathf.Min(lap + 1, raceManager.LapsToWin) + "/" + raceManager.LapsToWin;
+                return position + "/" + raceManager.BikeCount + " - Vuelta " + Mathf.Min(lap + 1, raceManager.LapsToWin) + "/" + raceManager.LapsToWin;
 
             case RaceState.Finished:
                 return raceManager.IsLocalPlayerWinner() ? "GANASTE" : "PERDISTE";
