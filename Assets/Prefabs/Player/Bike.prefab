@@ -83,7 +83,7 @@ MonoBehaviour:
   groundMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  gravity: -25
+  gravity: -9
   maxFallSpeed: 40
   maxGroundAngle: 50
   groundSnapDistance: 0.3

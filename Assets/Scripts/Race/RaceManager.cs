@@ -144,7 +144,6 @@ public class RaceManager : NetworkBehaviour
 
     public override void Render()
     {
-        // Detectamos cambios en el estado de red de forma fluida para todos los clientes
         foreach (var change in _changeDetector.DetectChanges(this))
         {
             if (change == nameof(State))

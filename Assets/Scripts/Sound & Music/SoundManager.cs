@@ -43,12 +43,11 @@ public class SoundManager : MonoBehaviour
     {
         if (Instance != this) return;
 
-        // Comparamos con los indices definidos en tu NetworkManager
         if (scene.buildIndex == NetworkManager.MenuSceneIndex || scene.buildIndex == NetworkManager.LobbySceneIndex)
         {
             PlayMusic(lobbyMusic);
         }
-        else if (scene.buildIndex == NetworkManager.RaceSceneIndex || scene.buildIndex == NetworkManager.NewRaceSceneIndex)
+        else if (scene.buildIndex == NetworkManager.NewRaceSceneIndex)
         {
             PlayMusic(raceMusic);
         }
