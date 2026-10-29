@@ -162,7 +162,10 @@ public class RaceManager : NetworkBehaviour
                 }
                 else if (State == RaceState.Finished && IsLocalPlayerWinner())
                 {
-                    SoundManager.Instance?.PlayVictorySound();
+                    if (IsLocalPlayerWinner())
+                    {
+                        SoundManager.Instance?.PlayVictorySound();
+                    }
                 }
             }
         }

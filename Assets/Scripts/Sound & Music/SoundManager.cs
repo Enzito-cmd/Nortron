@@ -9,6 +9,10 @@ public class SoundManager : MonoBehaviour
     [SerializeField] private AudioSource musicAudioSource;
     [SerializeField] private AudioSource sfxAudioSource;
 
+    [Header("Volumes")]
+    [Range(0f, 1f), SerializeField] private float musicVolume = 0.5f;
+    [Range(0f, 1f), SerializeField] private float sfxVolume = 0.8f;
+
     [Header("Music Clips")]
     [SerializeField] private AudioClip lobbyMusic;
     [SerializeField] private AudioClip raceMusic;
@@ -27,6 +31,14 @@ public class SoundManager : MonoBehaviour
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
+
+        ApplyVolumes();
+    }
+
+    private void ApplyVolumes()
+    {
+        if (musicAudioSource != null) musicAudioSource.volume = musicVolume;
+        if (sfxAudioSource != null) sfxAudioSource.volume = sfxVolume;
     }
 
     private void OnEnable()
@@ -41,9 +53,7 @@ public class SoundManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        if (Instance != this) return;
-
-        if (scene.buildIndex == NetworkManager.MenuSceneIndex || scene.buildIndex == NetworkManager.LobbySceneIndex)
+        if (scene.buildIndex == NetworkManager.LobbySceneIndex || scene.name == "MainMenu")
         {
             PlayMusic(lobbyMusic);
         }
@@ -68,7 +78,7 @@ public class SoundManager : MonoBehaviour
     {
         if (sfxAudioSource != null && countdownSound != null)
         {
-            sfxAudioSource.PlayOneShot(countdownSound);
+            sfxAudioSource.PlayOneShot(countdownSound, sfxVolume);
         }
     }
 
@@ -76,7 +86,7 @@ public class SoundManager : MonoBehaviour
     {
         if (sfxAudioSource != null && victorySound != null)
         {
-            sfxAudioSource.PlayOneShot(victorySound);
+            sfxAudioSource.PlayOneShot(victorySound, sfxVolume);
         }
     }
 }
