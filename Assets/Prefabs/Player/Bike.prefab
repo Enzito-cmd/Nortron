@@ -84,13 +84,13 @@ MonoBehaviour:
   groundMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  jumpGravity: -7
+  jumpGravity: -9
   dropGravity: -30
   maxFallSpeed: 40
   maxGroundAngle: 50
   groundSnapDistance: 0.3
   descentSnapDistance: 0.7
-  launchMultiplier: 1.3
+  launchMultiplier: 0.5
   skinWidth: 0.03
   airTurnFactor: 0.35
   respawnFallDistance: 15

@@ -24,7 +24,7 @@ public class MenuUI : MonoBehaviour
 
     private void Start()
     {
-        string message = NetworkManager.Instance != null ? NetworkManager.Instance.ConsumeDisconnectMessage() : string.Empty;
+        string message = NetworkManager.ConsumeDisconnectMessage();
 
         if (message.Length == 0)
         {

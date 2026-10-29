@@ -31,9 +31,9 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
 
     public string PlayerName { get; set; } = string.Empty;
 
-    public string DisconnectMessage { get; private set; } = string.Empty;
+    public static string DisconnectMessage { get; private set; } = string.Empty;
 
-    public string ConsumeDisconnectMessage()
+    public static string ConsumeDisconnectMessage()
     {
         string message = DisconnectMessage;
         DisconnectMessage = string.Empty;
