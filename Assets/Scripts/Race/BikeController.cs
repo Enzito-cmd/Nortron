@@ -1,5 +1,6 @@
 using Fusion;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class BikeController : NetworkBehaviour
 {
@@ -9,6 +10,10 @@ public class BikeController : NetworkBehaviour
     private const float RespawnHeight = 0.5f;
     private const int MaxSlideIterations = 4;
     private const int MaxDepenetrationPasses = 3;
+    private const float MetersPerSecondToKmh = 3.6f;
+    private const float LaunchThreshold = 1f;
+    private const float SurfaceProbeBack = 0.1f;
+    private const float SurfaceProbeHeight = 0.2f;
 
     [SerializeField] private float acceleration = 8f;
     [SerializeField] private float reverseAcceleration = 4f;
@@ -21,10 +26,14 @@ public class BikeController : NetworkBehaviour
 
     [Header("Physics")]
     [SerializeField] private LayerMask groundMask = ~0;
-    [SerializeField] private float gravity = -25f;
+    [FormerlySerializedAs("gravity")]
+    [SerializeField] private float jumpGravity = -9f;
+    [SerializeField] private float dropGravity = -30f;
     [SerializeField] private float maxFallSpeed = 40f;
     [SerializeField] private float maxGroundAngle = 50f;
     [SerializeField] private float groundSnapDistance = 0.3f;
+    [SerializeField] private float descentSnapDistance = 0.7f;
+    [SerializeField] private float launchMultiplier = 1.2f;
     [SerializeField] private float skinWidth = 0.03f;
     [SerializeField] private float airTurnFactor = 0.35f;
     [SerializeField] private float respawnFallDistance = 15f;
@@ -46,6 +55,7 @@ public class BikeController : NetworkBehaviour
 
     private CapsuleCollider hull;
     private NetworkTransform networkTransform;
+    private PlayerIdentity identity;
     private Quaternion visualBaseRotation = Quaternion.identity;
     private Quaternion visualTilt = Quaternion.identity;
     private float minGroundNormalY;
@@ -54,6 +64,7 @@ public class BikeController : NetworkBehaviour
     [Networked] private float VerticalSpeed { get; set; }
     [Networked] private NetworkBool IsGrounded { get; set; }
     [Networked] private NetworkBool IsAccelerating { get; set; }
+    [Networked] private NetworkBool Launched { get; set; }
     [Networked] public int CurrentLap { get; private set; }
     [Networked] private int NextCheckpointIndex { get; set; }
     [Networked] public NetworkBool HasBoost { get; private set; }
@@ -62,7 +73,33 @@ public class BikeController : NetworkBehaviour
 
     public static BikeController Local { get; private set; }
 
-    public int Progress => CurrentLap * 1000 + NextCheckpointIndex;
+    public int Progress
+    {
+        get
+        {
+            int count = RaceManager.Instance != null ? RaceManager.Instance.CheckpointCount : 0;
+            int stage = NextCheckpointIndex == 0 ? count : NextCheckpointIndex;
+            return CurrentLap * count + stage;
+        }
+    }
+
+    public float DistanceToNextCheckpoint
+    {
+        get
+        {
+            RaceManager raceManager = RaceManager.Instance;
+
+            if (raceManager == null || raceManager.CheckpointCount == 0)
+            {
+                return 0f;
+            }
+
+            return Vector3.Distance(transform.position, raceManager.GetCheckpoint(NextCheckpointIndex).Center);
+        }
+    }
+
+    public float SpeedKmh => Mathf.Abs(ForwardSpeed) * MetersPerSecondToKmh;
+    public string PlayerName => identity != null ? identity.DisplayName : "Jugador " + Object.InputAuthority.PlayerId;
     public CapsuleCollider Hull => hull;
     public Vector3 HorizontalVelocity => transform.forward * ForwardSpeed;
     public bool IsBoosting => BoostTimer.IsRunning && BoostTimer.Expired(Runner) == false;
@@ -72,6 +109,7 @@ public class BikeController : NetworkBehaviour
     {
         hull = GetComponent<CapsuleCollider>();
         networkTransform = GetComponent<NetworkTransform>();
+        identity = GetComponent<PlayerIdentity>();
         minGroundNormalY = Mathf.Cos(maxGroundAngle * Mathf.Deg2Rad);
 
         if (hull == null)
@@ -130,8 +168,8 @@ public class BikeController : NetworkBehaviour
         {
             if (canDrive)
             {
-                throttle = input.Forward;
-                turn = input.Turn;
+                throttle = ClampInput(input.Forward);
+                turn = ClampInput(input.Turn);
 
                 if (HasBoost && IsBoosting == false && input.buttons.WasPressed(PreviousButtons, Buttons.Boost))
                 {
@@ -147,7 +185,7 @@ public class BikeController : NetworkBehaviour
         Depenetrate();
 
         RaycastHit groundHit;
-        bool grounded = ProbeGround(IsGrounded, out groundHit);
+        bool grounded = ProbeGround(IsGrounded, VerticalSpeed > AscendingThreshold, out groundHit);
         IsGrounded = grounded;
 
         UpdateSpeed(throttle);
@@ -175,6 +213,11 @@ public class BikeController : NetworkBehaviour
     public void SetHorizontalVelocity(Vector3 velocity)
     {
         ForwardSpeed = Vector3.Dot(velocity, transform.forward);
+    }
+
+    private static float ClampInput(float value)
+    {
+        return float.IsNaN(value) ? 0f : Mathf.Clamp(value, -1f, 1f);
     }
 
     private CapsuleCollider CreateDefaultHull()
@@ -309,11 +352,11 @@ public class BikeController : NetworkBehaviour
             Vector3 normal = groundHit.normal;
             slopeVerticalSpeed = -(normal.x * velocity.x + normal.z * velocity.z) / normal.y;
             velocity.y = slopeVerticalSpeed;
-            VerticalSpeed = 0f;
         }
         else
         {
-            VerticalSpeed = Mathf.Max(VerticalSpeed + gravity * dt, -maxFallSpeed);
+            float airGravity = Launched ? jumpGravity : dropGravity;
+            VerticalSpeed = Mathf.Max(VerticalSpeed + airGravity * dt, -maxFallSpeed);
             velocity.y = VerticalSpeed;
         }
 
@@ -325,7 +368,7 @@ public class BikeController : NetworkBehaviour
         ForwardSpeed = Vector3.Dot(achieved, forward) / dt;
 
         RaycastHit snapHit;
-        bool landed = ProbeGround(grounded, out snapHit);
+        bool landed = ProbeGround(grounded, slopeVerticalSpeed > AscendingThreshold, out snapHit);
 
         if (landed)
         {
@@ -336,11 +379,15 @@ public class BikeController : NetworkBehaviour
                 transform.position += Vector3.down * gap;
             }
 
-            VerticalSpeed = 0f;
+            VerticalSpeed = slopeVerticalSpeed;
+            Launched = false;
         }
         else if (grounded)
         {
-            VerticalSpeed = slopeVerticalSpeed;
+            bool launching = slopeVerticalSpeed > LaunchThreshold;
+
+            VerticalSpeed = launching ? slopeVerticalSpeed * launchMultiplier : slopeVerticalSpeed;
+            Launched = launching;
         }
         else if (hitCeiling && VerticalSpeed > 0f)
         {
@@ -350,7 +397,7 @@ public class BikeController : NetworkBehaviour
         IsGrounded = landed;
     }
 
-    private bool ProbeGround(bool wasGrounded, out RaycastHit hit)
+    private bool ProbeGround(bool wasGrounded, bool ascending, out RaycastHit hit)
     {
         hit = default;
 
@@ -359,11 +406,31 @@ public class BikeController : NetworkBehaviour
             return false;
         }
 
+        float snapDistance = wasGrounded && ascending == false ? descentSnapDistance : groundSnapDistance;
+
         GetHullSegment(out Vector3 start, out Vector3 end, out float radius);
 
-        bool found = Physics.CapsuleCast(start, end, radius, Vector3.down, out hit, groundSnapDistance + skinWidth, groundMask, QueryTriggerInteraction.Ignore);
+        bool found = Physics.CapsuleCast(start, end, radius, Vector3.down, out hit, snapDistance + skinWidth, groundMask, QueryTriggerInteraction.Ignore);
+
+        if (found)
+        {
+            hit.normal = SurfaceNormal(hit);
+        }
 
         return found && hit.normal.y >= minGroundNormalY;
+    }
+
+    private Vector3 SurfaceNormal(RaycastHit contact)
+    {
+        Vector3 behind = transform.forward * -Mathf.Sign(ForwardSpeed);
+        Vector3 origin = contact.point + behind * SurfaceProbeBack + Vector3.up * SurfaceProbeHeight;
+
+        if (Physics.Raycast(origin, Vector3.down, out RaycastHit surface, SurfaceProbeHeight * 2f, groundMask, QueryTriggerInteraction.Ignore))
+        {
+            return surface.normal;
+        }
+
+        return contact.normal;
     }
 
     private bool MoveWithCollision(Vector3 displacement)
@@ -562,6 +629,7 @@ public class BikeController : NetworkBehaviour
         ForwardSpeed = 0f;
         VerticalSpeed = 0f;
         IsGrounded = false;
+        Launched = false;
 
         if (networkTransform != null)
         {

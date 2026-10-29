@@ -6,12 +6,39 @@ public class MenuUI : MonoBehaviour
 {
     [SerializeField] private TMP_InputField text;
     [SerializeField] private TMP_InputField nameInput;
+    [SerializeField] private GameObject errorPanel;
+    [SerializeField] private TMP_Text errorText;
 
     private void Awake()
     {
         if (nameInput != null)
         {
             nameInput.characterLimit = NetworkManager.MaxNameLength;
+        }
+
+        if (errorPanel != null)
+        {
+            errorPanel.SetActive(false);
+        }
+    }
+
+    private void Start()
+    {
+        string message = NetworkManager.Instance != null ? NetworkManager.Instance.ConsumeDisconnectMessage() : string.Empty;
+
+        if (message.Length == 0)
+        {
+            return;
+        }
+
+        if (errorText != null)
+        {
+            errorText.text = message;
+        }
+
+        if (errorPanel != null)
+        {
+            errorPanel.SetActive(true);
         }
     }
 
@@ -30,6 +57,14 @@ public class MenuUI : MonoBehaviour
     public void ExitGame()
     {
         Application.Quit();
+    }
+
+    public void CloseError()
+    {
+        if (errorPanel != null)
+        {
+            errorPanel.SetActive(false);
+        }
     }
 
     private void ApplyPlayerName()

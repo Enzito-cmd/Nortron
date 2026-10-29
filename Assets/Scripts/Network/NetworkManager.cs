@@ -22,11 +22,23 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private NetworkPrefabRef racePlayerPrefab;
 
     private readonly Dictionary<PlayerRef, NetworkObject> spawnedAvatars = new Dictionary<PlayerRef, NetworkObject>();
+    private readonly List<int> freeColors = new List<int>();
     private int loadedSceneIndex = -1;
+    private bool starting;
+    private bool leaving;
 
     public static NetworkManager Instance { get; private set; }
 
     public string PlayerName { get; set; } = string.Empty;
+
+    public string DisconnectMessage { get; private set; } = string.Empty;
+
+    public string ConsumeDisconnectMessage()
+    {
+        string message = DisconnectMessage;
+        DisconnectMessage = string.Empty;
+        return message;
+    }
 
     private void Awake()
     {
@@ -49,11 +61,18 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
 
     public void LeaveSession()
     {
+        leaving = true;
         runner.Shutdown();
     }
 
     public async void StartGameHost(string sessionName)
     {
+        if (starting)
+        {
+            return;
+        }
+
+        starting = true;
         runner.ProvideInput = true;
 
         StartGameResult result = await runner.StartGame(new StartGameArgs()
@@ -64,32 +83,48 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
             SceneManager = sceneManager
         });
 
+        starting = false;
+
         if (result.Ok)
         {
             await runner.LoadScene(SceneRef.FromIndex(LobbySceneIndex), LoadSceneMode.Single);
         }
-        else
-        {
-            Debug.LogError("Could not create the session: " + result.ShutdownReason);
-        }
+        //else
+        //{
+        //    Debug.LogError("Could not create the session: " + result.ShutdownReason);
+        //}
     }
 
     public async void StartGameClient(string sessionName)
     {
+        if (starting)
+        {
+            return;
+        }
+
+        starting = true;
         runner.ProvideInput = true;
 
         StartGameResult result = await runner.StartGame(new StartGameArgs()
         {
             GameMode = GameMode.Client,
             SessionName = sessionName,
-            ConnectionToken = Encoding.UTF8.GetBytes(PlayerName.Trim()),
+            ConnectionToken = BuildConnectionToken(),
             SceneManager = sceneManager
         });
 
-        if (result.Ok == false)
-        {
-            Debug.LogError("Could not join the session: " + result.ShutdownReason);
-        }
+        starting = false;
+
+        //if (result.Ok == false)
+        //{
+        //    Debug.LogError("Could not join the session: " + result.ShutdownReason);
+        //}
+    }
+
+    private byte[] BuildConnectionToken()
+    {
+        string name = PlayerName.Trim();
+        return name.Length > 0 ? Encoding.UTF8.GetBytes(name) : null;
     }
 
     private void SpawnAvatar(NetworkRunner runner, PlayerRef player)
@@ -129,6 +164,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
         }
 
         string nickname = BuildNickname(runner, player);
+        int colorIndex = loadedSceneIndex == NewRaceSceneIndex ? TakeColor() : 0;
 
         NetworkObject avatar = runner.Spawn(prefabToSpawn, spawnPosition, spawnRotation, player, (spawnRunner, spawned) =>
         {
@@ -137,11 +173,28 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
             if (identity != null)
             {
                 identity.Nickname = nickname;
+                identity.ColorIndex = colorIndex;
             }
         });
 
         runner.SetPlayerObject(player, avatar);
         spawnedAvatars.Add(player, avatar);
+    }
+
+    private int TakeColor()
+    {
+        if (freeColors.Count == 0)
+        {
+            for (int i = 0; i < PlayerIdentity.ColorCount; i++)
+            {
+                freeColors.Add(i);
+            }
+        }
+
+        int pick = UnityEngine.Random.Range(0, freeColors.Count);
+        int color = freeColors[pick];
+        freeColors.RemoveAt(pick);
+        return color;
     }
 
     private string BuildNickname(NetworkRunner runner, PlayerRef player)
@@ -171,7 +224,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
 
         if (nickname.Length == 0)
         {
-            nickname = "Jugador " + player.PlayerId;
+            nickname = "Player " + player.PlayerId;
         }
 
         return nickname;
@@ -210,6 +263,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
         }
 
         spawnedAvatars.Clear();
+        freeColors.Clear();
         loadedSceneIndex = -1;
     }
 
@@ -228,7 +282,21 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
     {
+        if (DisconnectMessage.Length == 0 && leaving == false)
+        {
+            DisconnectMessage = DescribeShutdown(shutdownReason);
+
+            if (DisconnectMessage.Length == 0)
+            {
+                DisconnectMessage = "Se perdio la conexion con el host.";
+            }
+        }
+
+        leaving = false;
+
         spawnedAvatars.Clear();
+        freeColors.Clear();
+        starting = false;
         SceneManager.LoadScene(MenuSceneName);
         ReplaceRunner();
     }
@@ -252,13 +320,50 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
     {
         if (runner.IsShutdown == false)
         {
+            DisconnectMessage = DescribeDisconnect(reason);
             runner.Shutdown();
+        }
+    }
+
+    private static string DescribeDisconnect(NetDisconnectReason reason)
+    {
+        switch (reason)
+        {
+            case NetDisconnectReason.ByRemote:
+                return "Game closed by host";
+
+            case NetDisconnectReason.Requested:
+                return string.Empty;
+
+            default:
+                return "Lost connection with host";
+        }
+    }
+
+    private static string DescribeShutdown(ShutdownReason reason)
+    {
+        switch (reason)
+        {
+            case ShutdownReason.Ok:
+                return string.Empty;
+
+            case ShutdownReason.ConnectionTimeout:
+            case ShutdownReason.PhotonCloudTimeout:
+            case ShutdownReason.OperationTimeout:
+                return "Lost connection with host";
+
+            case ShutdownReason.GameClosed:
+            case ShutdownReason.DisconnectedByPluginLogic:
+                return "Game closed by host";
+
+            default:
+                return "Connection closed (" + reason + ").";
         }
     }
 
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {
-        if (ChatBox.IsTyping)
+        if (ChatBox.IsTyping || PauseMenu.IsOpen)
         {
             input.Set(new NetworkInputData());
             return;

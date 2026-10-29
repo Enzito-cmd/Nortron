@@ -14,10 +14,12 @@ public enum RaceState
 
 public class RaceManager : NetworkBehaviour
 {
-    private const int MaxPickups = 16;
+    private const int MaxPickups = 8;
+
+    private static readonly System.Comparison<BikeController> StandingsOrder = CompareProgress;
 
     [SerializeField] private int minPlayersToStart = 2;
-    [SerializeField] private float countdownSeconds = 5f;
+    [SerializeField] private float countdownSeconds = 3f;
     [SerializeField] private int lapsToWin = 3;
     [SerializeField] private float finishDelaySeconds = 5f;
     [SerializeField] private float collisionBounce = 0.3f;
@@ -30,6 +32,7 @@ public class RaceManager : NetworkBehaviour
     [Networked, Capacity(MaxPickups)] private NetworkArray<TickTimer> PickupTimers => default;
 
     private readonly List<BikeController> bikes = new List<BikeController>();
+    private readonly List<BikeController> standings = new List<BikeController>();
     private ChangeDetector _changeDetector;
     private BoostPickup[] pickups = new BoostPickup[0];
 
@@ -44,19 +47,24 @@ public class RaceManager : NetworkBehaviour
         return checkpoints[index];
     }
 
-    public int GetPosition(BikeController bike)
+    public List<BikeController> GetStandings()
     {
-        int position = 1;
+        standings.Clear();
+        standings.AddRange(bikes);
+        standings.Sort(StandingsOrder);
+        return standings;
+    }
 
-        for (int i = 0; i < bikes.Count; i++)
+    private static int CompareProgress(BikeController a, BikeController b)
+    {
+        int byProgress = b.Progress.CompareTo(a.Progress);
+
+        if (byProgress != 0)
         {
-            if (bikes[i] != bike && bikes[i].Progress > bike.Progress)
-            {
-                position++;
-            }
+            return byProgress;
         }
 
-        return position;
+        return a.DistanceToNextCheckpoint.CompareTo(b.DistanceToNextCheckpoint);
     }
 
     public override void Spawned()

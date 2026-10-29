@@ -6,10 +6,11 @@ public class ChatBox : MonoBehaviour
 {
     private const int MaxLength = 64;
     private const int MaxStoredMessages = 50;
-    private const int VisibleLines = 8;
+    private const int VisibleLines = 10;
+    private const int FontSize = 20;
     private const float MessageSeconds = 8f;
     private const float FadeSeconds = 1f;
-    private const float LineHeight = 26f;
+    private const float LineHeight = 32f;
     private const float Margin = 16f;
     private const string InputControlName = "ChatInput";
 
@@ -77,23 +78,6 @@ public class ChatBox : MonoBehaviour
         if (IsInLobby() == false)
         {
             CloseChat();
-            return;
-        }
-
-        if (IsTyping && Input.GetKeyDown(KeyCode.Escape))
-        {
-            CloseChat();
-        }
-        else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-        {
-            if (IsTyping)
-            {
-                SendDraft();
-            }
-            else
-            {
-                OpenChat();
-            }
         }
     }
 
@@ -104,12 +88,14 @@ public class ChatBox : MonoBehaviour
             return;
         }
 
+        HandleKeys();
+
         if (lineStyle == null)
         {
             CreateStyles();
         }
 
-        float width = Mathf.Min(Screen.width * 0.45f, 520f);
+        float width = Mathf.Min(Screen.width * 0.5f, 680f);
         float bottom = Screen.height - Margin;
 
         if (IsTyping)
@@ -157,16 +143,45 @@ public class ChatBox : MonoBehaviour
         GUI.color = previous;
     }
 
+    private void HandleKeys()
+    {
+        Event current = Event.current;
+
+        if (current.type != EventType.KeyDown)
+        {
+            return;
+        }
+
+        if (IsTyping && current.keyCode == KeyCode.Escape)
+        {
+            CloseChat();
+            current.Use();
+        }
+        else if (current.keyCode == KeyCode.Return || current.keyCode == KeyCode.KeypadEnter)
+        {
+            if (IsTyping)
+            {
+                SendDraft();
+            }
+            else
+            {
+                OpenChat();
+            }
+
+            current.Use();
+        }
+    }
+
     private void CreateStyles()
     {
         lineStyle = new GUIStyle(GUI.skin.label);
-        lineStyle.fontSize = 16;
+        lineStyle.fontSize = FontSize;
         lineStyle.alignment = TextAnchor.MiddleLeft;
         lineStyle.padding = new RectOffset(8, 8, 0, 0);
         lineStyle.normal.textColor = Color.white;
 
         inputStyle = new GUIStyle(GUI.skin.textField);
-        inputStyle.fontSize = 16;
+        inputStyle.fontSize = FontSize;
         inputStyle.alignment = TextAnchor.MiddleLeft;
     }
 
@@ -181,6 +196,7 @@ public class ChatBox : MonoBehaviour
         IsTyping = false;
         focusPending = false;
         draft = string.Empty;
+        GUIUtility.keyboardControl = 0;
     }
 
     private void SendDraft()
