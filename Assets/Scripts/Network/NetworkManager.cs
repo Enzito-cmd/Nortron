@@ -10,7 +10,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
 {
     public const int MenuSceneIndex = 0;
     public const int LobbySceneIndex = 1;
-    public const int NewRaceSceneIndex = 3;
+    public const int NewRaceSceneIndex = 4;
     public const int MaxNameLength = 16;
 
     private const int MaxPlayers = 4;
