@@ -10,7 +10,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
 {
     public const int MenuSceneIndex = 0;
     public const int LobbySceneIndex = 1;
-    public const int NewRaceSceneIndex = 3;
+    public const int FirstRaceSceneIndex = 2;
     public const int MaxNameLength = 16;
 
     private const int MaxPlayers = 4;
@@ -22,12 +22,20 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private NetworkPrefabRef racePlayerPrefab;
 
     private readonly Dictionary<PlayerRef, NetworkObject> spawnedAvatars = new Dictionary<PlayerRef, NetworkObject>();
-    private readonly List<int> freeColors = new List<int>();
+    private readonly Dictionary<PlayerRef, int> playerColors = new Dictionary<PlayerRef, int>();
+    private readonly List<int> colorPool = new List<int>();
     private int loadedSceneIndex = -1;
     private bool starting;
     private bool leaving;
 
     public static NetworkManager Instance { get; private set; }
+
+    public bool IsHost => runner != null && runner.IsServer;
+
+    public static bool IsRaceScene(int buildIndex)
+    {
+        return buildIndex >= FirstRaceSceneIndex;
+    }
 
     public string PlayerName { get; set; } = string.Empty;
 
@@ -63,6 +71,17 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
     {
         leaving = true;
         runner.Shutdown();
+    }
+
+    public bool LoadRace(int buildIndex)
+    {
+        if (runner.IsServer == false || IsRaceScene(buildIndex) == false)
+        {
+            return false;
+        }
+
+        runner.LoadScene(SceneRef.FromIndex(buildIndex), LoadSceneMode.Single);
+        return true;
     }
 
     public async void StartGameHost(string sessionName)
@@ -142,7 +161,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
         {
             prefabToSpawn = playerPrefab;
         }
-        else if (loadedSceneIndex == NewRaceSceneIndex)
+        else if (IsRaceScene(loadedSceneIndex))
         {
             prefabToSpawn = racePlayerPrefab;
         }
@@ -164,7 +183,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
         }
 
         string nickname = BuildNickname(runner, player);
-        int colorIndex = loadedSceneIndex == NewRaceSceneIndex ? TakeColor() : 0;
+        int colorIndex = GetColor(player);
 
         NetworkObject avatar = runner.Spawn(prefabToSpawn, spawnPosition, spawnRotation, player, (spawnRunner, spawned) =>
         {
@@ -181,20 +200,64 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
         spawnedAvatars.Add(player, avatar);
     }
 
-    private int TakeColor()
+    public void SetColor(PlayerRef player, int colorIndex)
     {
-        if (freeColors.Count == 0)
+        if (runner.IsServer == false || loadedSceneIndex != LobbySceneIndex)
         {
-            for (int i = 0; i < PlayerIdentity.ColorCount; i++)
+            return;
+        }
+
+        if (colorIndex < 0 || colorIndex >= PlayerIdentity.ColorCount)
+        {
+            return;
+        }
+
+        playerColors[player] = colorIndex;
+
+        if (spawnedAvatars.TryGetValue(player, out NetworkObject avatar))
+        {
+            PlayerIdentity identity = avatar.GetComponent<PlayerIdentity>();
+
+            if (identity != null)
             {
-                freeColors.Add(i);
+                identity.ColorIndex = colorIndex;
+            }
+        }
+    }
+
+    private int GetColor(PlayerRef player)
+    {
+        if (playerColors.TryGetValue(player, out int color))
+        {
+            return color;
+        }
+
+        color = PickFreeColor();
+        playerColors[player] = color;
+        return color;
+    }
+
+    private int PickFreeColor()
+    {
+        colorPool.Clear();
+
+        for (int i = 0; i < PlayerIdentity.ColorCount; i++)
+        {
+            if (playerColors.ContainsValue(i) == false)
+            {
+                colorPool.Add(i);
             }
         }
 
-        int pick = UnityEngine.Random.Range(0, freeColors.Count);
-        int color = freeColors[pick];
-        freeColors.RemoveAt(pick);
-        return color;
+        if (colorPool.Count == 0)
+        {
+            for (int i = 0; i < PlayerIdentity.ColorCount; i++)
+            {
+                colorPool.Add(i);
+            }
+        }
+
+        return colorPool[UnityEngine.Random.Range(0, colorPool.Count)];
     }
 
     private string BuildNickname(NetworkRunner runner, PlayerRef player)
@@ -250,6 +313,8 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
             runner.Despawn(avatar);
             spawnedAvatars.Remove(player);
         }
+
+        playerColors.Remove(player);
     }
 
     public void OnSceneLoadStart(NetworkRunner runner)
@@ -263,7 +328,6 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
         }
 
         spawnedAvatars.Clear();
-        freeColors.Clear();
         loadedSceneIndex = -1;
     }
 
@@ -295,7 +359,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
         leaving = false;
 
         spawnedAvatars.Clear();
-        freeColors.Clear();
+        playerColors.Clear();
         starting = false;
         SceneManager.LoadScene(MenuSceneName);
         ReplaceRunner();

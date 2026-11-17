@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Fusion;
 using UnityEngine;
 
@@ -12,16 +13,21 @@ public class LobbyPlayer : NetworkBehaviour
     [SerializeField] private Animator animator;
     [SerializeField] private float turnSpeed = 120f;
 
+    private static readonly List<LobbyPlayer> all = new List<LobbyPlayer>();
+
     private NetworkCharacterController characterController;
     private bool wasGrounded = true;
 
     public static LobbyPlayer Local { get; private set; }
+
+    public static IReadOnlyList<LobbyPlayer> All => all;
 
     public override void Spawned()
     {
         characterController = GetComponent<NetworkCharacterController>();
 
         characterController.rotationSpeed = 0f;
+        all.Add(this);
 
         if (Object.HasInputAuthority)
         {
@@ -32,6 +38,8 @@ public class LobbyPlayer : NetworkBehaviour
 
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
+        all.Remove(this);
+
         if (Local == this)
         {
             Local = null;

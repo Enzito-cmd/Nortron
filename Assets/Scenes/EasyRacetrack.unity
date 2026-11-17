@@ -402,6 +402,10 @@ MonoBehaviour:
   - {fileID: 938864029}
   - {fileID: 1176125488}
   - {fileID: 652095129}
+  minSpeedKmh: 45
+  baseSpeedKmh: 60
+  maxSpeedKmh: 75
+  fullEffectSeconds: 3
   _State: 0
 --- !u!4 &59065650
 Transform:
@@ -10925,6 +10929,7 @@ GameObject:
   - component: {fileID: 1008046458}
   - component: {fileID: 1008046460}
   - component: {fileID: 1008046459}
+  - component: {fileID: 1008046461}
   m_Layer: 0
   m_Name: StandingsPanel
   m_TagString: Untagged
@@ -10991,6 +10996,24 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1008046457}
   m_CullTransparentMesh: 1
+--- !u!114 &1008046461
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1008046457}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8e943f07f8876b4b90d0a91ca23cd55, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StandingsToggle
+  panel: {fileID: 1008046458}
+  toggleKey: 9
+  slideDirection: {x: -1, y: 0}
+  slideMargin: 60
+  slideSeconds: 0.25
+  startVisible: 1
 --- !u!1 &1011038613
 GameObject:
   m_ObjectHideFlags: 0

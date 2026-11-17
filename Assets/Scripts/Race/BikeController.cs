@@ -70,6 +70,7 @@ public class BikeController : NetworkBehaviour
     [Networked] public NetworkBool HasBoost { get; private set; }
     [Networked] private TickTimer BoostTimer { get; set; }
     [Networked] private NetworkButtons PreviousButtons { get; set; }
+    [Networked] private float SpeedLimit { get; set; }
 
     public static BikeController Local { get; private set; }
 
@@ -95,6 +96,21 @@ public class BikeController : NetworkBehaviour
             }
 
             return Vector3.Distance(transform.position, raceManager.GetCheckpoint(NextCheckpointIndex).Center);
+        }
+    }
+
+    public float RaceDistance
+    {
+        get
+        {
+            RaceManager raceManager = RaceManager.Instance;
+
+            if (raceManager == null)
+            {
+                return 0f;
+            }
+
+            return raceManager.GetTrackDistance(CurrentLap, NextCheckpointIndex, DistanceToNextCheckpoint);
         }
     }
 
@@ -210,6 +226,11 @@ public class BikeController : NetworkBehaviour
         MoveWithCollision(push);
     }
 
+    public void SetSpeedLimit(float metersPerSecond)
+    {
+        SpeedLimit = metersPerSecond;
+    }
+
     public void SetHorizontalVelocity(Vector3 velocity)
     {
         ForwardSpeed = Vector3.Dot(velocity, transform.forward);
@@ -305,7 +326,8 @@ public class BikeController : NetworkBehaviour
 
         if (accelerating)
         {
-            float topSpeed = boosting ? maxForwardSpeed + boostSpeedBonus : maxForwardSpeed;
+            float limit = SpeedLimit > 0f ? SpeedLimit : maxForwardSpeed;
+            float topSpeed = boosting ? limit + boostSpeedBonus : limit;
             float power = boosting ? acceleration * boostAccelerationMultiplier : acceleration;
             speed = Mathf.MoveTowards(speed, topSpeed, power * dt);
         }

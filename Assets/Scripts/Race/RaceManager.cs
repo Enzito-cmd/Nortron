@@ -15,6 +15,7 @@ public enum RaceState
 public class RaceManager : NetworkBehaviour
 {
     private const int MaxPickups = 8;
+    private const float KmhToMetersPerSecond = 1f / 3.6f;
 
     private static readonly System.Comparison<BikeController> StandingsOrder = CompareProgress;
 
@@ -24,6 +25,12 @@ public class RaceManager : NetworkBehaviour
     [SerializeField] private float finishDelaySeconds = 5f;
     [SerializeField] private float collisionBounce = 0.3f;
     [SerializeField] private Checkpoint[] checkpoints;
+
+    [Header("Catch Up")]
+    [SerializeField] private float minSpeedKmh = 35f;
+    [SerializeField] private float baseSpeedKmh = 50f;
+    [SerializeField] private float maxSpeedKmh = 65f;
+    [SerializeField] private float fullEffectSeconds = 3f;
 
     [Networked] public RaceState State { get; private set; }
     [Networked] private TickTimer CountdownTimer { get; set; }
@@ -35,6 +42,10 @@ public class RaceManager : NetworkBehaviour
     private readonly List<BikeController> standings = new List<BikeController>();
     private ChangeDetector _changeDetector;
     private BoostPickup[] pickups = new BoostPickup[0];
+    private readonly List<float> distances = new List<float>();
+    private float[] segmentStarts = new float[0];
+    private float[] segmentLengths = new float[0];
+    private float lapLength;
 
     public static RaceManager Instance { get; private set; }
 
@@ -45,6 +56,21 @@ public class RaceManager : NetworkBehaviour
     public Checkpoint GetCheckpoint(int index)
     {
         return checkpoints[index];
+    }
+
+    public float GetTrackDistance(int lap, int nextCheckpointIndex, float distanceToNext)
+    {
+        int count = checkpoints.Length;
+
+        if (count < 2)
+        {
+            return 0f;
+        }
+
+        int previous = (nextCheckpointIndex + count - 1) % count;
+        float within = Mathf.Clamp(segmentLengths[previous] - distanceToNext, 0f, segmentLengths[previous]);
+
+        return lap * lapLength + segmentStarts[previous] + within;
     }
 
     public List<BikeController> GetStandings()
@@ -71,6 +97,7 @@ public class RaceManager : NetworkBehaviour
     {
         Instance = this;
         _changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);
+        BuildTrackPath();
 
         pickups = FindObjectsByType<BoostPickup>(FindObjectsSortMode.None)
             .OrderBy(pickup => pickup.transform.position.x)
@@ -141,6 +168,10 @@ public class RaceManager : NetworkBehaviour
                 }
                 break;
 
+            case RaceState.Racing:
+                UpdateSpeedLimits();
+                break;
+
             case RaceState.Finished:
                 if (FinishTimer.Expired(Runner))
                 {
@@ -196,6 +227,68 @@ public class RaceManager : NetworkBehaviour
     public bool IsLocalPlayerWinner()
     {
         return WinnerPlayer == Runner.LocalPlayer;
+    }
+
+    private void BuildTrackPath()
+    {
+        int count = checkpoints.Length;
+
+        segmentStarts = new float[count];
+        segmentLengths = new float[count];
+        lapLength = 0f;
+
+        for (int i = 0; i < count; i++)
+        {
+            Vector3 from = checkpoints[i].Center;
+            Vector3 to = checkpoints[(i + 1) % count].Center;
+
+            segmentStarts[i] = lapLength;
+            segmentLengths[i] = Vector3.Distance(from, to);
+            lapLength += segmentLengths[i];
+        }
+    }
+
+    private void UpdateSpeedLimits()
+    {
+        float fullGap = baseSpeedKmh * KmhToMetersPerSecond * fullEffectSeconds;
+
+        distances.Clear();
+
+        for (int i = 0; i < bikes.Count; i++)
+        {
+            distances.Add(bikes[i].RaceDistance);
+        }
+
+        for (int i = 0; i < bikes.Count; i++)
+        {
+            float gapAhead = float.MaxValue;
+            float gapBehind = float.MaxValue;
+
+            for (int j = 0; j < bikes.Count; j++)
+            {
+                if (j == i)
+                {
+                    continue;
+                }
+
+                float difference = distances[j] - distances[i];
+
+                if (difference > 0f)
+                {
+                    gapAhead = Mathf.Min(gapAhead, difference);
+                }
+                else
+                {
+                    gapBehind = Mathf.Min(gapBehind, -difference);
+                }
+            }
+
+            float catchUp = gapAhead == float.MaxValue ? 0f : Mathf.Clamp01(gapAhead / fullGap);
+            float hold = gapBehind == float.MaxValue ? 0f : Mathf.Clamp01(gapBehind / fullGap);
+            float limit = baseSpeedKmh + (maxSpeedKmh - baseSpeedKmh) * catchUp - (baseSpeedKmh - minSpeedKmh) * hold;
+
+            bikes[i].SetSpeedLimit(limit * KmhToMetersPerSecond);
+        }
     }
 
     private void ResolveBikeCollisions()

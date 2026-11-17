@@ -67,6 +67,53 @@ public class PlayerIdentity : NetworkBehaviour
         RPC_Say(message);
     }
 
+    public void RequestColor(int index)
+    {
+        RPC_RequestColor(index);
+    }
+
+    public void TintRenderers(Renderer[] renderers, int index)
+    {
+        if (bikeColors.Length == 0)
+        {
+            return;
+        }
+
+        Color color = bikeColors[index % bikeColors.Length];
+
+        foreach (Renderer meshRenderer in renderers)
+        {
+            Material[] shared = meshRenderer.sharedMaterials;
+            Material[] instances = null;
+
+            for (int i = 0; i < shared.Length; i++)
+            {
+                if (shared[i] == null || shared[i].name.StartsWith(ColorMaterialName) == false)
+                {
+                    continue;
+                }
+
+                if (instances == null)
+                {
+                    instances = meshRenderer.materials;
+                }
+
+                instances[i].SetColor(BaseColorId, color);
+                instances[i].SetColor(EmissionColorId, color * emissionIntensity);
+                instances[i].EnableKeyword("_EMISSION");
+            }
+        }
+    }
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_RequestColor(int index)
+    {
+        if (NetworkManager.Instance != null)
+        {
+            NetworkManager.Instance.SetColor(Object.InputAuthority, index);
+        }
+    }
+
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_Say(NetworkString<_64> message)
     {
@@ -89,35 +136,7 @@ public class PlayerIdentity : NetworkBehaviour
 
     private void ApplyColor()
     {
-        if (bikeColors.Length == 0)
-        {
-            return;
-        }
-
-        Color color = bikeColors[ColorIndex % bikeColors.Length];
-
-        foreach (Renderer meshRenderer in GetComponentsInChildren<Renderer>())
-        {
-            Material[] shared = meshRenderer.sharedMaterials;
-            Material[] instances = null;
-
-            for (int i = 0; i < shared.Length; i++)
-            {
-                if (shared[i] == null || shared[i].name != ColorMaterialName)
-                {
-                    continue;
-                }
-
-                if (instances == null)
-                {
-                    instances = meshRenderer.materials;
-                }
-
-                instances[i].SetColor(BaseColorId, color);
-                instances[i].SetColor(EmissionColorId, color * emissionIntensity);
-                instances[i].EnableKeyword("_EMISSION");
-            }
-        }
+        TintRenderers(GetComponentsInChildren<Renderer>(), ColorIndex);
     }
 
     private void ShowName()

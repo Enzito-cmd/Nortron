@@ -57,7 +57,7 @@ public class SoundManager : MonoBehaviour
         {
             PlayMusic(lobbyMusic);
         }
-        else if (scene.buildIndex == NetworkManager.NewRaceSceneIndex)
+        else if (NetworkManager.IsRaceScene(scene.buildIndex))
         {
             PlayMusic(raceMusic);
         }
