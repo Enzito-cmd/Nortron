@@ -1,10 +1,11 @@
 using Fusion;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class PlayerIdentity : NetworkBehaviour
 {
-    public const int ColorCount = 4;
+    public const int ColorCount = 6;
 
     private const string ColorMaterialName = "BikeColor";
     private const float ChatCooldownSeconds = 0.5f;
@@ -25,6 +26,7 @@ public class PlayerIdentity : NetworkBehaviour
     };
 
     private float nextChatTime;
+    private bool savedColorApplied;
 
     [Networked] public NetworkString<_16> Nickname { get; set; }
     [Networked] public int ColorIndex { get; set; }
@@ -60,6 +62,8 @@ public class PlayerIdentity : NetworkBehaviour
         {
             tagRoot.rotation = Camera.main.transform.rotation;
         }
+
+        ApplySavedColor();
     }
 
     public void SendChat(string message)
@@ -117,7 +121,7 @@ public class PlayerIdentity : NetworkBehaviour
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_Say(NetworkString<_64> message)
     {
-        string text = message.Value.Replace('\n', ' ').Replace('\r', ' ').Replace('\t', ' ').Trim();
+        string text = TextFilter.RemoveTags(message.Value).Replace('\n', ' ').Replace('\r', ' ').Replace('\t', ' ').Trim();
 
         if (text.Length == 0 || Time.time < nextChatTime)
         {
@@ -132,6 +136,23 @@ public class PlayerIdentity : NetworkBehaviour
     private void RPC_Show(NetworkString<_16> sender, NetworkString<_64> message)
     {
         ChatBox.AddMessage(sender.Value, message.Value);
+    }
+
+    private void ApplySavedColor()
+    {
+        if (savedColorApplied || Object.HasInputAuthority == false || PlayerStats.Loaded == false)
+        {
+            return;
+        }
+
+        savedColorApplied = true;
+
+        bool inLobby = SceneManager.GetActiveScene().buildIndex == NetworkManager.LobbySceneIndex;
+
+        if (inLobby && PlayerStats.SavedColor >= 0 && PlayerStats.SavedColor != ColorIndex)
+        {
+            RequestColor(PlayerStats.SavedColor);
+        }
     }
 
     private void ApplyColor()

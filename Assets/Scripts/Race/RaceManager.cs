@@ -23,6 +23,7 @@ public class RaceManager : NetworkBehaviour
     [SerializeField] private float countdownSeconds = 3f;
     [SerializeField] private int lapsToWin = 3;
     [SerializeField] private float finishDelaySeconds = 5f;
+    [SerializeField] private float boostBonusKmh = 36f;
     [SerializeField] private float collisionBounce = 0.3f;
     [SerializeField] private Checkpoint[] checkpoints;
 
@@ -36,6 +37,10 @@ public class RaceManager : NetworkBehaviour
     [Networked] private TickTimer CountdownTimer { get; set; }
     [Networked] private TickTimer FinishTimer { get; set; }
     [Networked] public PlayerRef WinnerPlayer { get; private set; }
+    [Networked] public float WinnerSeconds { get; private set; }
+    [Networked] public int LapsToWin { get; private set; }
+    [Networked] public float BoostBonus { get; private set; }
+    [Networked] private int RacingStartTick { get; set; }
     [Networked, Capacity(MaxPickups)] private NetworkArray<TickTimer> PickupTimers => default;
 
     private readonly List<BikeController> bikes = new List<BikeController>();
@@ -46,10 +51,10 @@ public class RaceManager : NetworkBehaviour
     private float[] segmentStarts = new float[0];
     private float[] segmentLengths = new float[0];
     private float lapLength;
+    private bool catchUpEnabled = true;
 
     public static RaceManager Instance { get; private set; }
 
-    public int LapsToWin => lapsToWin;
     public int CheckpointCount => checkpoints.Length;
     public int BikeCount => bikes.Count;
 
@@ -99,7 +104,20 @@ public class RaceManager : NetworkBehaviour
         _changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);
         BuildTrackPath();
 
-        pickups = FindObjectsByType<BoostPickup>(FindObjectsSortMode.None)
+        foreach (BikeController bike in FindObjectsByType<BikeController>(FindObjectsSortMode.None))
+        {
+            if (bike.Object != null && bike.Object.IsValid)
+            {
+                RegisterBike(bike);
+            }
+        }
+
+        if (Object.HasStateAuthority)
+        {
+            ApplyConfig();
+        }
+
+        pickups =FindObjectsByType<BoostPickup>(FindObjectsSortMode.None)
             .OrderBy(pickup => pickup.transform.position.x)
             .ThenBy(pickup => pickup.transform.position.z)
             .ThenBy(pickup => pickup.transform.position.y)
@@ -165,6 +183,7 @@ public class RaceManager : NetworkBehaviour
                 if (CountdownTimer.Expired(Runner))
                 {
                     State = RaceState.Racing;
+                    RacingStartTick = Runner.Tick.Raw;
                 }
                 break;
 
@@ -191,12 +210,9 @@ public class RaceManager : NetworkBehaviour
                 {
                     SoundManager.Instance?.PlayCountdownSound();
                 }
-                else if (State == RaceState.Finished && IsLocalPlayerWinner())
+                else if (State == RaceState.Finished)
                 {
-                    if (IsLocalPlayerWinner())
-                    {
-                        SoundManager.Instance?.PlayVictorySound();
-                    }
+                    OnRaceFinished();
                 }
             }
         }
@@ -209,13 +225,14 @@ public class RaceManager : NetworkBehaviour
 
     public void ReportLapCompleted(BikeController bike, int lap)
     {
-        if (Object.HasStateAuthority == false || State != RaceState.Racing || lap < lapsToWin)
+        if (Object.HasStateAuthority == false || State != RaceState.Racing || lap < LapsToWin)
         {
             return;
         }
 
         State = RaceState.Finished;
         WinnerPlayer = bike.Object.InputAuthority;
+        WinnerSeconds = Mathf.Max(0f, (Runner.Tick.Raw - RacingStartTick) * Runner.DeltaTime);
         FinishTimer = TickTimer.CreateFromSeconds(Runner, finishDelaySeconds);
     }
 
@@ -227,6 +244,33 @@ public class RaceManager : NetworkBehaviour
     public bool IsLocalPlayerWinner()
     {
         return WinnerPlayer == Runner.LocalPlayer;
+    }
+
+    private void OnRaceFinished()
+    {
+        bool won = IsLocalPlayerWinner();
+
+        if (won)
+        {
+            SoundManager.Instance?.PlayVictorySound();
+        }
+
+        if (BikeController.Local != null)
+        {
+            PlayerStats.RecordRace(won);
+        }
+    }
+
+    private void ApplyConfig()
+    {
+        catchUpEnabled = GameConfig.GetBool(GameConfig.CatchUpEnabledKey, catchUpEnabled);
+        minSpeedKmh = GameConfig.GetFloat(GameConfig.CatchUpMinKey, minSpeedKmh, 10f, 200f);
+        baseSpeedKmh = Mathf.Max(minSpeedKmh, GameConfig.GetFloat(GameConfig.CatchUpBaseKey, baseSpeedKmh, 10f, 200f));
+        maxSpeedKmh = Mathf.Max(baseSpeedKmh, GameConfig.GetFloat(GameConfig.CatchUpMaxKey, maxSpeedKmh, 10f, 200f));
+        fullEffectSeconds = GameConfig.GetFloat(GameConfig.CatchUpSecondsKey, fullEffectSeconds, 0.5f, 15f);
+
+        LapsToWin = GameConfig.GetInt(GameConfig.LapsKey, lapsToWin, 1, 10);
+        BoostBonus = GameConfig.GetFloat(GameConfig.BoostBonusKey, boostBonusKmh, 0f, 60f) * KmhToMetersPerSecond;
     }
 
     private void BuildTrackPath()
@@ -250,6 +294,16 @@ public class RaceManager : NetworkBehaviour
 
     private void UpdateSpeedLimits()
     {
+        if (catchUpEnabled == false)
+        {
+            for (int i = 0; i < bikes.Count; i++)
+            {
+                bikes[i].SetSpeedLimit(baseSpeedKmh * KmhToMetersPerSecond);
+            }
+
+            return;
+        }
+
         float fullGap = baseSpeedKmh * KmhToMetersPerSecond * fullEffectSeconds;
 
         distances.Clear();

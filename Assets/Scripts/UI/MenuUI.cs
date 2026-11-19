@@ -9,6 +9,8 @@ public class MenuUI : MonoBehaviour
     [SerializeField] private GameObject errorPanel;
     [SerializeField] private TMP_Text errorText;
 
+    private bool nameFilled;
+
     private void Awake()
     {
         if (nameInput != null)
@@ -24,32 +26,49 @@ public class MenuUI : MonoBehaviour
 
     private void Start()
     {
+        GameConfig.RefreshIfStale();
+
         string message = NetworkManager.ConsumeDisconnectMessage();
 
-        if (message.Length == 0)
+        if (message.Length > 0)
+        {
+            ShowError(message);
+        }
+    }
+
+    private void Update()
+    {
+        if (nameFilled || PlayerStats.Loaded == false)
         {
             return;
         }
 
-        if (errorText != null)
-        {
-            errorText.text = message;
-        }
+        nameFilled = true;
 
-        if (errorPanel != null)
+        if (nameInput != null && nameInput.text.Length == 0 && PlayerStats.SavedName.Length > 0)
         {
-            errorPanel.SetActive(true);
+            nameInput.text = PlayerStats.SavedName;
         }
     }
 
     public void CreateGame()
     {
+        if (CanPlay() == false)
+        {
+            return;
+        }
+
         ApplyPlayerName();
         NetworkManager.Instance.StartGameHost(text.text);
     }
 
     public void JoinGame()
     {
+        if (CanPlay() == false)
+        {
+            return;
+        }
+
         ApplyPlayerName();
         NetworkManager.Instance.StartGameClient(text.text);
     }
@@ -67,8 +86,41 @@ public class MenuUI : MonoBehaviour
         }
     }
 
+    private bool CanPlay()
+    {
+        if (GameConfig.Maintenance)
+        {
+            ShowError(GameConfig.MaintenanceMessage);
+            return false;
+        }
+
+        if (GameConfig.IsVersionAllowed == false)
+        {
+            ShowError("There is a new version (" + GameConfig.MinVersion + "). Update the game to play.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private void ShowError(string message)
+    {
+        if (errorText != null)
+        {
+            errorText.text = message;
+        }
+
+        if (errorPanel != null)
+        {
+            errorPanel.SetActive(true);
+        }
+    }
+
     private void ApplyPlayerName()
     {
-        NetworkManager.Instance.PlayerName = nameInput != null ? nameInput.text : string.Empty;
+        string playerName = nameInput != null ? nameInput.text : string.Empty;
+
+        NetworkManager.Instance.PlayerName = playerName;
+        PlayerStats.SaveName(playerName);
     }
 }

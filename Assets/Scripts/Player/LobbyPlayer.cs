@@ -55,14 +55,19 @@ public class LobbyPlayer : NetworkBehaviour
     {
         if (GetInput(out NetworkInputData input))
         {
-            transform.Rotate(0f, input.Turn * turnSpeed * Runner.DeltaTime, 0f);
-            characterController.Move(transform.forward * input.Forward);
+            transform.Rotate(0f, ClampInput(input.Turn) * turnSpeed * Runner.DeltaTime, 0f);
+            characterController.Move(transform.forward * ClampInput(input.Forward));
 
             if (input.buttons.IsSet(Buttons.Jump))
             {
                 characterController.Jump();
             }
         }
+    }
+
+    private static float ClampInput(float value)
+    {
+        return float.IsNaN(value) ? 0f : Mathf.Clamp(value, -1f, 1f);
     }
 
     public override void Render()

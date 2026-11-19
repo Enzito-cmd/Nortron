@@ -19,6 +19,7 @@ public class ColorSelector : MonoBehaviour
 
         int next = (identity.ColorIndex + direction + PlayerIdentity.ColorCount) % PlayerIdentity.ColorCount;
         identity.RequestColor(next);
+        PlayerStats.SaveColor(next);
     }
 
     private void Update()

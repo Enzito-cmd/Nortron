@@ -5,7 +5,6 @@ using UnityEngine;
 public class PatrullaHelicoptero : MonoBehaviour
 {
     [Header("Configuracion de Puntos")]
-    [Tooltip("Lista de Transforms que representan los puntos de patrulla")]
     public Transform[] puntosPatrulla;
 
     [Header("Parametros de Movimiento")]
@@ -30,7 +29,6 @@ public class PatrullaHelicoptero : MonoBehaviour
         Vector3 direccion = (posicionObjetivo - transform.position).normalized;
         if (direccion != Vector3.zero)
         {
-            //Quaternion rotacionObjetivo = Quaternion.LookRotation(direccion);
             Quaternion rotacionObjetivo = Quaternion.LookRotation(direccion) * Quaternion.Euler(0, 180, 0);
             transform.rotation = Quaternion.Slerp(transform.rotation, rotacionObjetivo, velocidadRotacion * Time.deltaTime);
         }

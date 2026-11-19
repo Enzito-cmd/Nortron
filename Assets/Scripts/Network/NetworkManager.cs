@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Fusion;
+using Fusion.Photon.Realtime;
 using Fusion.Sockets;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -80,6 +81,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
             return false;
         }
 
+        runner.SessionInfo.IsOpen = false;
         runner.LoadScene(SceneRef.FromIndex(buildIndex), LoadSceneMode.Single);
         return true;
     }
@@ -99,6 +101,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
             GameMode = GameMode.Host,
             SessionName = sessionName,
             PlayerCount = MaxPlayers,
+            CustomPhotonAppSettings = BuildAppSettings(),
             SceneManager = sceneManager
         });
 
@@ -108,10 +111,6 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
         {
             await runner.LoadScene(SceneRef.FromIndex(LobbySceneIndex), LoadSceneMode.Single);
         }
-        //else
-        //{
-        //    Debug.LogError("Could not create the session: " + result.ShutdownReason);
-        //}
     }
 
     public async void StartGameClient(string sessionName)
@@ -129,15 +128,18 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
             GameMode = GameMode.Client,
             SessionName = sessionName,
             ConnectionToken = BuildConnectionToken(),
+            CustomPhotonAppSettings = BuildAppSettings(),
             SceneManager = sceneManager
         });
 
         starting = false;
+    }
 
-        //if (result.Ok == false)
-        //{
-        //    Debug.LogError("Could not join the session: " + result.ShutdownReason);
-        //}
+    private static FusionAppSettings BuildAppSettings()
+    {
+        FusionAppSettings settings = PhotonAppSettings.Global.AppSettings.GetCopy();
+        settings.AppVersion = Application.version;
+        return settings;
     }
 
     private byte[] BuildConnectionToken()
@@ -278,7 +280,7 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
             }
         }
 
-        nickname = nickname.Trim();
+        nickname = TextFilter.RemoveTags(nickname).Trim();
 
         if (nickname.Length > MaxNameLength)
         {
@@ -337,6 +339,8 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
 
         if (runner.IsServer)
         {
+            runner.SessionInfo.IsOpen = loadedSceneIndex == LobbySceneIndex;
+
             foreach (PlayerRef player in runner.ActivePlayers)
             {
                 SpawnAvatar(runner, player);
@@ -417,6 +421,14 @@ public class NetworkManager : MonoBehaviour, INetworkRunnerCallbacks
                 return "Lost connection with host";
 
             case ShutdownReason.GameClosed:
+                return "Game closed or already started";
+
+            case ShutdownReason.GameNotFound:
+                return "Game not found";
+
+            case ShutdownReason.GameIsFull:
+                return "Game is full";
+
             case ShutdownReason.DisconnectedByPluginLogic:
                 return "Game closed by host";
 

@@ -115,8 +115,9 @@ public class BikeController : NetworkBehaviour
     }
 
     public float SpeedKmh => Mathf.Abs(ForwardSpeed) * MetersPerSecondToKmh;
-    public string PlayerName => identity != null ? identity.DisplayName : "Jugador " + Object.InputAuthority.PlayerId;
+    public string PlayerName => identity != null ? identity.DisplayName : "Player " + Object.InputAuthority.PlayerId;
     public CapsuleCollider Hull => hull;
+    public int NextCheckpoint => NextCheckpointIndex;
     public Vector3 HorizontalVelocity => transform.forward * ForwardSpeed;
     public bool IsBoosting => BoostTimer.IsRunning && BoostTimer.Expired(Runner) == false;
     public float BoostFill => IsBoosting ? (BoostTimer.RemainingTime(Runner) ?? 0f) / boostDuration : 0f;
@@ -327,7 +328,8 @@ public class BikeController : NetworkBehaviour
         if (accelerating)
         {
             float limit = SpeedLimit > 0f ? SpeedLimit : maxForwardSpeed;
-            float topSpeed = boosting ? limit + boostSpeedBonus : limit;
+            float bonus = RaceManager.Instance != null ? RaceManager.Instance.BoostBonus : boostSpeedBonus;
+        float topSpeed = boosting ? limit + bonus : limit;
             float power = boosting ? acceleration * boostAccelerationMultiplier : acceleration;
             speed = Mathf.MoveTowards(speed, topSpeed, power * dt);
         }
